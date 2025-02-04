@@ -1,0 +1,200 @@
+---
+title: "Demo_1_SimulateGeneticData_2025"
+author: "Cris Van Hout"
+date: '`r Sys.Date()`'
+output: html_document
+---
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+
+## Load relevant libraries
+library(ggplot2)
+library(dplyr)
+
+## Simulate Genetic Data for Linear Regression
+### Define Parameters and Simulate Data
+### Number of iterations
+Iters <- 1
+
+### Define a matrix to store output summary statistics
+mat <- matrix(rep(0, 3 * Iters), nrow = Iters, ncol = 3)
+
+### Effect allele frequency
+q <- 0.3
+
+### Number of observations
+N <- 1000
+
+### Complementary allele frequency
+p <- 1 - q
+
+### Effect size for heterozygotes (assume additive model for now)
+B1 <- 1.25
+
+### Define allele counts from frequencies based on Hardy-Weinberg Equilibrium (HWE)
+### What if we didn't round?
+Nrr <- round(p^2 * N)
+Nra <- round(2 * p * q * N)
+Naa <- N - Nrr - Nra
+
+### Define genotype vectors
+Xrr <- rep(0, Nrr)
+Xra <- rep(1, Nra)
+Xaa <- rep(2, Naa)
+X <- c(Xrr, Xra, Xaa)
+
+## Simulate Phenotypes and Perform Linear Regression
+
+for (i in 1:Iters) {
+  ### Simulate phenotypes (change lm to glm for binary phenotypes)
+  Y <- (B1 * X) + rnorm(N, 10, 4) #note that we apply 'noise' here using arbitrary parameters
+  
+  ### Fit linear model
+  model <- lm(Y ~ X)
+  
+  ### Extract p-value and effect size. We will play with these in a later demo.
+  p <- summary(model)$coefficients[2, 4]
+  B <- summary(model)$coefficients[2, 1]
+  
+  ### Store iteration number, p-value, and effect size
+  mat[i, 1] <- i
+  mat[i, 2] <- p
+  mat[i, 3] <- B
+}
+
+### Convert matrix to data frame and name columns
+mat <- as.data.frame(mat)
+colnames(mat) <- c("iter", "p", "B")
+mat
+
+## Summary Statistics and Plots
+
+### Summary of genotype vector counts
+table(X)
+
+### Summary of phenotype vector counts
+hist(Y)
+
+### Display summary statistics of the last model fit
+summary(model)
+
+## The beta coefficient suggests that for each unit increase in the number of effect alleles (e.g., from 0 to 1, or 1 to 2), the expected change in the phenotype is Beta units. This implies a substantial effect size, where the presence of each additional effect allele is associated with an increase in the trait value by Beta units. The p-value indicates that the observed association is highly statistically significant. This means that there is a very low probability that the observed association is due to random chance. Typically, a p-value less than 0.05 is considered statistically significant, so a p-value this small provides strong evidence against the null hypothesis (i.e., no association between the genetic variant and the trait).
+
+## Data Preparation for Plotting
+### Prepare the output of a single iteration for plotting the data with style
+Df <- as.data.frame(cbind(X, Y))
+Df$X <- as.factor(Df$X) # What if we had included this earlier?
+
+### Plotting with style
+### Load geom_flat_violin function manually from the classroom github repo
+#geom_flat_violin.R
+# To do: Source the function from the GitHub URL
+#https://gist.github.com/dgrtwo/eb7750e74997891d7c20#file-geom_flat_violin-r
+
+library(ggplot2)
+library(dplyr)
+
+"%||%" <- function(a, b) {
+  if (!is.null(a)) a else b
+}
+
+geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
+                        position = "dodge", trim = TRUE, scale = "area",
+                        show.legend = NA, inherit.aes = TRUE, ...) {
+  layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomFlatViolin,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      trim = trim,
+      scale = scale,
+      ...
+    )
+  )
+}
+
+###' @rdname ggplot2-ggproto
+###' @format NULL
+###' @usage NULL
+###' @export
+GeomFlatViolin <-
+  ggproto("GeomFlatViolin", Geom,
+          setup_data = function(data, params) {
+            data$width <- data$width %||%
+              params$width %||% (resolution(data$x, FALSE) * 0.9)
+            
+            # ymin, ymax, xmin, and xmax define the bounding rectangle for each group
+            data %>%
+              group_by(group) %>%
+              mutate(ymin = min(y),
+                     ymax = max(y),
+                     xmin = x,
+                     xmax = x + width / 2)
+          },
+          
+          draw_group = function(data, panel_scales, coord) {
+            # Find the points for the line to go all the way around
+            data <- transform(data, xminv = x,
+                              xmaxv = x + violinwidth * (xmax - x))
+            
+            # Make sure it's sorted properly to draw the outline
+            newdata <- rbind(plyr::arrange(transform(data, x = xminv), y),
+                             plyr::arrange(transform(data, x = xmaxv), -y))
+            
+            # Close the polygon: set first and last point the same
+            # Needed for coord_polar and such
+            newdata <- rbind(newdata, newdata[1,])
+            
+            ggplot2:::ggname("geom_flat_violin", GeomPolygon$draw_panel(newdata, panel_scales, coord))
+          },
+          
+          draw_key = draw_key_polygon,
+          
+          default_aes = aes(weight = 1, colour = "grey20", fill = "white", linewidth = 0.5,
+                            alpha = NA, linetype = "solid"),
+          
+          required_aes = c("x", "y")
+)
+
+geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
+                             position = "dodge", trim = TRUE, scale = "area", 
+                             show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomFlatViolin,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(trim = trim, scale = scale, ...)
+  )
+}
+
+mixedPlot <- ggplot(Df, aes(X, Y, fill = X)) +
+  geom_flat_violin(alpha = 0.5, position = position_nudge(x = .2, y = 0)) +
+  geom_jitter(alpha = 0.5, width = 0.15) +
+  geom_boxplot(alpha = 0.5, width = .25, outlier.shape = NA) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+### Display the plot
+mixedPlot
+
+### Scatter plot of genotypes versus phenotypes
+plot(X, Y)
+
+
