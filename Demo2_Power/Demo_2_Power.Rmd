@@ -2,23 +2,23 @@
 title: "Demo_2_Power_2025"
 author: "Cris Van Hout"
 date: '`r Sys.Date()`'
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
 
 # Load relevant libraries
 library(dplyr)
 library(knitr)
 library(ggplot2)
-
-# Set seed for reproducibility
-set.seed(123)
+library(tinytex)
 
 # Define simulation parameters
 n <- 1000  # sample size
-effect_sizes <- seq(0, .6, by = 0.05)  # range of effect sizes to test
+effect_sizes <- seq(-1, 1, by = 0.05)  # range of effect sizes to test
 alpha <- 0.05  # significance level
 iterations <- 1000  # number of simulations
 power_results <- data.frame()  # data frame to store power results
@@ -42,13 +42,12 @@ for (beta in effect_sizes) {
     Xrr <- rep(0, Nrr)
     Xra <- rep(1, Nra)
     Xaa <- rep(2, Naa)
-    x <- c(Xrr, Xra, Xaa)
-
-    x <- rnorm(n, mean = 0, sd = 1)  # predictor variable
-    y <- beta * x + rnorm(n, mean = 10, sd = 4)  # outcome variable
+    X <- c(Xrr, Xra, Xaa)
+    
+    Y <- beta * X + rnorm(n, mean = 10, sd = 4)  # outcome variable
     
     # Fit linear model
-    model <- lm(y ~ x)
+    model <- lm(Y ~ X)
     
     # Extract p-value from the model, and store for later
     p_value <- summary(model)$coefficients[2, 4]
@@ -73,7 +72,16 @@ for (beta in effect_sizes) {
 # Print power results
 rownames(power_results) <- NULL
 #print(power_results) #this is ugly!!
-kable(power_results, format = "markdown")
+
+# Format the first columns as floating points with 3 digits, others with scientific notation
+power_results <- power_results %>%
+  mutate(across(c(beta,power), ~ sprintf("%.3f", .))) %>%
+  mutate(across(c(mean_p, lower05, upper95), ~ sprintf("%.3e", .)))
+# reformat the first two columns to numeric from text, due to using sprintf
+power_results$beta<-as.numeric(power_results$beta)
+power_results$power<-as.numeric(power_results$power)
+
+kable(power_results, format = "markdown") #from knitr
 
 
 # Plot power vs. effect size 
@@ -83,3 +91,5 @@ ggplot(power_results, aes(x = beta)) +
   scale_y_continuous(name = "Power") +
   ylim(0, 1) +
   labs(title = "Power Curve")
+
+```
