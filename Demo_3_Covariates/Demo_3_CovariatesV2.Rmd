@@ -1,0 +1,108 @@
+---
+title: "Demo_3_Covariables_2025"
+author: "Cris Van Hout"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+
+## Load relevant libraries
+library(ggplot2)
+library(dplyr)
+library(tinytex)
+
+## Simulate Genetic Data for Linear Regression
+### Define Parameters and Simulate Data
+### Number of iterations
+Iters <- 1000
+
+### Define a matrix to store output summary statistics
+mat <- matrix(rep(0, 5 * Iters), nrow = Iters, ncol = 5)
+
+### Effect allele frequency
+q <- 0.3
+
+### Number of observations
+N <- 1000
+
+### Complementary allele frequency
+p <- 1 - q
+
+### Effect size for heterozygotes (assume additive model for now)
+B1 <- 1.25
+
+### Effect size for another covariable
+B2 <- 5
+
+### Define allele counts from frequencies based on Hardy-Weinberg Equilibrium (HWE)
+### What if we didn't round?
+Nrr <- round(p^2 * N)
+Nra <- round(2 * p * q * N)
+Naa <- N - Nrr - Nra
+
+### Define genotype vectors
+Xrr <- rep(0, Nrr)
+Xra <- rep(1, Nra)
+Xaa <- rep(2, Naa)
+X <- c(Xrr, Xra, Xaa)
+
+### Define covariable vector
+Z<-rbinom(N,1,.5)
+
+## Simulate Phenotypes and Perform Linear Regression
+
+for (i in 1:Iters) {
+  ### Simulate phenotypes (change lm to glm for binary phenotypes)
+  Y <- (B1 * X) + (B2 * Z) + rnorm(N, 10, 4) #note that we apply 'noise' here using arbitrary parameters
+  
+  ### Fit linear model
+  model <- lm(Y ~ X)
+  
+  ### Extract p-value and effect size of X
+  p <- summary(model)$coefficients[2, 4]
+  B <- summary(model)$coefficients[2, 1]
+  
+  ### Store iteration number, p-value and effect size for X
+  mat[i, 1] <- i
+  mat[i, 2] <- p
+  mat[i, 3] <- B
+  
+  ### Fit a new model with the same data, this time including independent covariable Z
+  model <- lm(Y ~ X + Z)
+  
+  ### Extract p-value and effect size.
+  p <- summary(model)$coefficients[2, 4]
+  B <- summary(model)$coefficients[2, 1]
+  
+  ### Store the p-value and effect size for X in the other model
+  mat[i, 4] <- p
+  mat[i, 5] <- B
+}
+
+### Convert matrix to data frame and name columns
+mat <- as.data.frame(mat)
+colnames(mat) <- c("iter", "p1", "B1","p2", "B2")
+
+plot(mat$B1,mat$B2,main="B coefficient of variant with and without covariate")
+abline(0,1)
+hist(mat$B1-mat$B2,breaks=10,col="light blue",main="difference in B")
+mean(mat$B1-mat$B2)
+max(mat$B1-mat$B2)
+
+plot(-log10(mat$p1),-log10(mat$p2),main="p value of variant with and without covariate")
+abline(0,1)
+mean(mat$p1-mat$p2)
+max(mat$p1-mat$p2)
+
+
+```
