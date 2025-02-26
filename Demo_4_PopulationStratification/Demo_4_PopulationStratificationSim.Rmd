@@ -1,5 +1,5 @@
 ---
-title: "Demo_3_PopulationStratification_2025"
+title: "Demo_4_PopulationStratification_2025"
 author: "Cris Van Hout"
 date: '`r Sys.Date()`'
 output: pdf_document
@@ -14,6 +14,12 @@ knitr::opts_chunk$set(warning = FALSE)
 require(ggplot2)
 
 #Define parameter values for two possibly distinct populations
+##p, major allele frequency
+##mean, sample mean value from a normally distributed variable
+##sd, standard deviation value from a normally distributed variable
+##effect, the beta coefficient of the minor allele
+##numObs, the sample size
+##all parameters can be set separately for populations 1 and 2
 
 p1=.5 
 mean1=0 
@@ -26,9 +32,12 @@ mean2=1
 effect2=0
 sd2=1 
 
-# Note that as sample sizes go up, so does sensitivity to differences in effect size and allele frequency
+# Note that as sample sizes go up, so does sensitivity to differences in
+#effect size and allele frequency, here we consider a low sample size
+#with a large genotype frequency difference as an illustration
 
-hwprops1=as.integer(as.character(numObs1*(c(p1^2,2*p1*(1-p1),(1-p1)^2))))  #this is still screwy for low MAF and low number of participants
+#Note: coding the genotypes this way is different than the last demo
+hwprops1=as.integer(as.character(numObs1*(c(p1^2,2*p1*(1-p1),(1-p1)^2))))  
 hwprops2=as.integer(as.character(numObs2*(c(p2^2,2*p2*(1-p2),(1-p2)^2))))
 
 geno1<-c(rep(0,hwprops1[1]),rep(1,hwprops1[2]),rep(2,numObs1-hwprops1[1]-hwprops1[2]))
@@ -43,7 +52,6 @@ ancestry<-c(rep("Blue",numObs1),rep("Red",numObs2))
 
 
 #consider the effect of the genotype in population 1
-
 titlept1=paste("Pop1: n=",numObs1,"f(a)=",(1-p1),"mean=",mean1,"effect=",effect1)
 plot(jitter(geno1,.3),pheno1,xlim=xlim,ylim=ylim,xlab="genotype",ylab="phenotype",col=rgb(0,0,255,150,maxColorValue=255), pch=16,xaxt="n")
 mtext(titlept1, side = 3, line = 2, cex = 1, col = "blue")
@@ -61,7 +69,7 @@ text(1.5, y = ((lm1$coefficients[1]+1.5*lm1$coefficients[2])-.5), labels = label
 #consider the effect of the genotype in population 2
 titlept2=paste("Pop2: n=",numObs2,"f(a)=",(1-p2),"mean=",mean2,"effect=",effect2)
 plot(jitter(geno2,.3),pheno2,xlim=xlim,ylim=ylim,xlab="genotype",ylab="phenotype",col=rgb(255,0,0,150,maxColorValue=255), pch=16,xaxt="n")
-mtext(titlept1, side = 3, line = 2, cex = 1, col = "red")
+mtext(titlept2, side = 3, line = 2, cex = 1, col = "red")
 labels=c("AA","Aa","aa")
 axis(1,at=c(0,1,2),labels=labels)
 
@@ -74,6 +82,8 @@ label2<-paste("B=",round(beta2,2),"p=",round(pval2,5))
 text(1.5, y = ((lm2$coefficients[1]+1.5*lm2$coefficients[2])-.5), labels = label2,col="red")
 
 #consider the effect of the genotype in population 1 and 2 jointly, ignoring any difference
+## A significant effect of the a allele is observed,
+##despite having simulated no effect of the genotype in either population 1 or 2
 plot(jitter(geno1,.3),pheno1,xlim=xlim,ylim=ylim,xlab="genotype",ylab="phenotype",col=rgb(0,0,0,150,maxColorValue=255), pch=16,xaxt="n")
 labels=c("AA","Aa","aa")
 axis(1,at=c(0,1,2),labels=labels)
@@ -81,39 +91,32 @@ points(jitter(geno2,.3),pheno2,col=rgb(0,0,0,150,maxColorValue=255), pch=16)
 
 lmall<-lm(phenoall~genoall)
 sum.lmall<-summary(lmall)
-pvalall<-print(sum.lmall$coefficients[2,4],digits=6)
+pvalall<-sum.lmall$coefficients[2,4]
 betaall<-sum.lmall$coefficients[2,1]
-
 
 abline(lmall$coefficients[1],lmall$coefficients[2])
 labelall<-paste("B=",round(betaall,2),"p=",round(pvalall,6))
 text(1.5, y = ((lmall$coefficients[1]+1.5*lmall$coefficients[2])+.25), labels = labelall)
 
+#Whoa! The model that ignores that there are actually two different groups
+#identifies a significant effect of the a allele when we coded no effect
+#in both populations! This is an illustration of a false positive result
+#caused by population stratification, differences in allele frequency and
+#mean trait value between two populations in the absense of any true effect
+#of the allele!
 
-#consider the effect of the genotype in population 1 and 2 jointly, ignoring any difference but plot the populations in different colors
-
-titlept1=paste("Pop1: n=",numObs1,"f(a)=",(1-p1),"mean=",mean1,"effect=",effect1)
-titlept2=paste("Pop2: n=",numObs2,"f(a)=",(1-p2),"mean=",mean2,"effect=",effect2)
-title12=c(titlept1,titlept2)
-plot(jitter(geno1,.3),pheno1,xlim=xlim,ylim=ylim,xlab="genotype",ylab="phenotype",col=rgb(150,0,0,150,maxColorValue=255), pch=16,xaxt="n")
-mtext(titlept1, side = 3, line = 2, cex = 1, col = "blue")
-labels=c("AA","Aa","aa")
-axis(1,at=c(0,1,2),labels=labels)
-
-points(jitter(geno2,.3),pheno2,col=rgb(0,0,150,150,maxColorValue=255), pch=16)
-mtext(titlept2, side = 3, line = 1, cex = 1, col = "red")
 
 #consider the effect of the genotype in population 1 and 2 jointly, accounting for difference
 titlept1=paste("Pop1: n=",numObs1,"f(a)=",(1-p1),"mean=",mean1,"effect=",effect1)
 titlept2=paste("Pop2: n=",numObs2,"f(a)=",(1-p2),"mean=",mean2,"effect=",effect2)
 title12=c(titlept1,titlept2)
 plot(jitter(geno1,.3),pheno1,xlim=xlim,ylim=ylim,xlab="genotype",ylab="phenotype",col=rgb(150,0,0,150,maxColorValue=255), pch=16,xaxt="n")
-mtext(titlept1, side = 3, line = 2, cex = 1, col = "blue")
+mtext(titlept1, side = 3, line = 2, cex = 1, col = "red")
 labels=c("AA","Aa","aa")
 axis(1,at=c(0,1,2),labels=labels)
 
 points(jitter(geno2,.3),pheno2,col=rgb(0,0,150,150,maxColorValue=255), pch=16)
-mtext(titlept2, side = 3, line = 1, cex = 1, col = "red")
+mtext(titlept2, side = 3, line = 1, cex = 1, col = "blue")
 
 lmall<-lm(phenoall~genoall)
 sum.lmall<-summary(lmall)
@@ -136,27 +139,32 @@ text(1.5, y = ((lmall$coefficients[1]+1.5*lmall$coefficients[2])+.5), labels = l
 
 abline(lm1$coefficients[1],lm1$coefficients[2],col="blue")
 label1<-paste("B=",round(beta1,2),"p=",round(pval1,5))
-text(1.5, y = ((lm1$coefficients[1]+1.5*lm1$coefficients[2])+1.5), labels = label1,col="blue")
+text(1.5, y = ((lm1$coefficients[1]+1.5*lm1$coefficients[2])+1.5), labels = label1,col="red")
 
 abline(lm2$coefficients[1],lm2$coefficients[2],col="red")
 label2<-paste("B=",round(beta2,2),"p=",round(pval2,5))
-text(1.5, y = ((lm2$coefficients[1]+1.5*lm2$coefficients[2])-1.5), labels = label2,col="red")
+text(1.5, y = ((lm2$coefficients[1]+1.5*lm2$coefficients[2])-1.5), labels = label2,col="blue")
 
+#Ok, now that we see the issue. Lets build a model that resolves the problem
+##Recall, population 1, true effect of a allele is zero
+sum.lm1
+##Recall, population 2, true effect of a allele is zero
+sum.lm2
+##Recall, both populations, not accounting for ancestry, we observe a spurious false positive
+#apparent significant effect of a allele
+sum.lmall
 
-#Ok, now that we see the issue. Lets check a model that resolves the problem
-
-lm1<-lm(pheno1~geno1)
-summary(lm1)
-
-lm2<-lm(pheno2~geno2)
-summary(lm2)
-
-lmall<-lm(phenoall~genoall)
-summary(lmall)
-
+##Finally, both populations including the confounding variable 'ancestry'
+##in the linear model to account for population stratification
+##The apparent effect of a allele is estimated to be near the true effect, zero
 lmallA<-lm(phenoall~genoall+ancestry)
 summary(lmallA)
 
-#Summary: It's is not the genotype that is associated with the outcome, it is the ummodeled difference in ancestry.
+#Summary: As we see in the parameters of the simulation, it's is not the genotype
+#that is associated with the outcome, it is the ummodeled difference in ancestry.
+
+#Question: How could we account for differences in ancestry without pre-defined
+#ancestry groups?
+
 
 ```
