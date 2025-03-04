@@ -1,0 +1,124 @@
+---
+title: "Demo_6_FStatisticsInLinearModels_2025"
+author: "Cris Van Hout"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+library(tinytex)
+
+## Simulate Genetic Data for Linear Regression
+### Define Parameters and Simulate Data
+### Number of iterations
+Iters <- 1000
+
+### Define a matrix to store output summary statistics
+mat <- matrix(rep(0, 5 * Iters), nrow = Iters, ncol = 9)
+
+### Effect allele frequency
+q <- 0.3
+
+### Number of observations
+N <- 1000
+
+### Complementary allele frequency
+p <- 1 - q
+
+### Effect size for heterozygotes (assume additive model for now)
+B1 <- 1.25
+
+### Effect size for another covariable
+B2 <- 5
+
+### Define allele counts from frequencies based on Hardy-Weinberg Equilibrium (HWE)
+### What if we didn't round?
+Nrr <- round(p^2 * N)
+Nra <- round(2 * p * q * N)
+Naa <- N - Nrr - Nra
+
+### Define genotype vectors
+Xrr <- rep(0, Nrr)
+Xra <- rep(1, Nra)
+Xaa <- rep(2, Naa)
+X <- c(Xrr, Xra, Xaa)
+
+### Define covariable vector
+Z<-rbinom(N,1,.5)
+
+## Simulate Phenotypes and Perform Linear Regression
+
+for (i in 1:Iters) {
+  ### Simulate phenotypes (change lm to glm for binary phenotypes)
+  Y <- (B1 * X) + (B2 * Z) + rnorm(N, 10, 4) #note that we apply 'noise' here using arbitrary parameters
+  
+  ### Fit linear model
+  model <- lm(Y ~ X)
+  
+  ### Extract p-value and effect size of X
+  p <- summary(model)$coefficients[2, 4]
+  B <- summary(model)$coefficients[2, 1]
+  f_statistic <- summary(model)$fstatistic[1]
+  f_statistic_p <- pf(f_statistic, summary(model)$fstatistic[2], summary(model)$fstatistic[3], lower.tail = FALSE)
+
+  ### Store iteration number, p-value and effect size for X
+  mat[i, 1] <- i
+  mat[i, 2] <- p
+  mat[i, 3] <- B
+  mat[i, 4] <-f_statistic
+  mat[i, 5] <-f_statistic_p
+  
+  ### Fit a new model with the same data, this time including independent covariable Z
+  model <- lm(Y ~ X + Z)
+  
+  ### Extract p-value and effect size.
+  p <- summary(model)$coefficients[2, 4]
+  B <- summary(model)$coefficients[2, 1]
+  f_statistic <- summary(model)$fstatistic[1]
+  f_statistic_p <- pf(f_statistic, summary(model)$fstatistic[2], summary(model)$fstatistic[3], lower.tail = FALSE)
+  ### Store the p-value and effect size for X in the other model
+  mat[i, 6] <- p
+  mat[i, 7] <- B
+  mat[i, 8] <-f_statistic
+  mat[i, 9] <-f_statistic_p
+
+}
+
+### Convert matrix to data frame and name columns
+mat <- as.data.frame(mat)
+colnames(mat) <- c("iter", "p1", "B1","F1","F1p","p2", "B2","F2","F2p")
+
+plot(mat$B1,mat$B2,main="B coefficient of variant with and without covariate")
+abline(0,1)
+hist(mat$B1-mat$B2,breaks=10,col="light blue",main="difference in B")
+mean(mat$B1-mat$B2)
+max(mat$B1-mat$B2)
+
+plot(-log10(mat$p1),-log10(mat$p2),main="p value of variant with and without covariate")
+abline(0,1)
+mean(mat$p1-mat$p2)
+max(mat$p1-mat$p2)
+
+plot(mat$F1,mat$F2,main="F statistic of model variant with and without covariate")
+abline(0,1)
+hist(mat$F1-mat$F2,breaks=10,col="light blue",main="difference in F")
+mean(mat$F1-mat$F2)
+max(mat$F1-mat$F2)
+
+plot(-log10(mat$F1p),-log10(mat$F2p),main="p value of F statistic of model variant with and without covariate")
+abline(0,1)
+mean(mat$F1p-mat$F2p)
+max(mat$F1p-mat$F2p)
+
+plot(-log10(mat$p1),-log10(mat$F1p),main="p value of variant and of F statistic of model variant without covariate")
+abline(0,1)
+
+plot(-log10(mat$p2),-log10(mat$F2p),main="p value of variant and of F statistic of model variant with covariate")
+abline(0,1)
+
+
+```

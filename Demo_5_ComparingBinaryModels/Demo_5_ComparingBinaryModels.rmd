@@ -1,0 +1,182 @@
+---
+title: "Demo_5_ComparingBinaryModels_2025"
+author: "Cris Van Hout"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+
+# Sample data
+set.seed(123)
+data1 <- data.frame(
+  Allele = sample(c("A", "a"), 500, replace = TRUE),
+  Outcome = as.numeric(sample(c("1", "0"), 500, replace = TRUE))
+)
+table1 <- table(data1$Allele, data1$Outcome)
+
+#A two by two table of Allele A and a, with independent outcome 0 and 1
+table1
+
+# Fisher's Exact Test
+
+fisher_test <- fisher.test(table1)
+print(fisher_test)
+
+# Chi-Square Test
+chi_square_test <- chisq.test(table1)
+print(chi_square_test)
+attributes(chi_square_test) #What?? No estimation of the Odds Ratio??
+#compute OR using (a*d)/(b*c) approach. alternatives include OR=exp(log(a)+log(d)-log(b)-log(c)). Why use an alternative?
+odds_ratio <- (table1[1, 1] * table1[2, 2]) / (table1[1, 2] * table1[2, 1]) 
+
+# Compute the standard error of the log odds ratio
+se_log_or <- sqrt(1 / table1[1, 1] + 1 / table1[1, 2] + 1 / table1[2, 1] + 1 / table1[2, 2])
+
+# Compute the 95% confidence interval for the log odds ratio
+log_or <- log(odds_ratio)
+ci_log_or <- log_or + c(-1.96, 1.96) * se_log_or
+
+# Convert the confidence interval back to the original scale
+ci_or <- exp(ci_log_or)
+
+# Print the results
+cat("Odds Ratio:", odds_ratio, "\n")
+cat("95% Confidence Interval:", ci_or, "\n")
+
+# Hold on. The OR from Fisher's exact is not equal to what we just calculated??
+# Note, fisher.test does not return the unconditional MLE (sample odds ratio)
+# which is a straightforward calculation from the data. (a*d)/(b*c)
+# fisher.test returns the conditional MLE, which provides a more accurate estimate
+# by considering the fixed margins, enhancing precision, especially in small sample contexts.
+
+# Logistic Regression
+logistic_model <- glm(Outcome ~ Allele, data = data1, family = binomial)
+summary(logistic_model)
+beta_coefficient <- coef(logistic_model)["AlleleA"]
+exp(beta_coefficient)
+
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Create the data frame
+data2 <- data.frame(
+  Allele = sample(c("A", "a"), 500, replace = TRUE)
+)
+
+# Calculate probabilities for Outcome based on Allele
+data2$Outcome <- as.numeric(ifelse(data2$Allele == "a",
+                        sample(c("1", "0"), 500, replace = TRUE, prob = c(0.6, 0.4)),
+                        sample(c("1", "0"), 500, replace = TRUE, prob = c(0.3, 0.7))))
+
+#A two by two table of Allele A and a, with correlated outcome 0 and 1
+table(data2)
+
+
+# Fisher's Exact Test
+table2 <- table(data2$Allele, data2$Outcome)
+fisher_test2 <- fisher.test(table2)
+print(fisher_test2)
+
+# Chi-Square Test
+chi_square_test2 <- chisq.test(table2)
+print(chi_square_test2)
+
+compute_odds_ratio <- function(table_2x2) {
+  # Ensure the input is a 2x2 matrix
+  if (!is.matrix(table_2x2) || dim(table_2x2)[1] != 2 || dim(table_2x2)[2] != 2) {
+    stop("Input must be a 2x2 matrix.")
+  }
+  
+  # Calculate the odds ratio
+  odds_ratio <- (table_2x2[1, 1] * table_2x2[2, 2]) / (table_2x2[1, 2] * table_2x2[2, 1])
+  
+  # Compute the standard error of the log odds ratio
+  se_log_or <- sqrt(1 / table_2x2[1, 1] + 1 / table_2x2[1, 2] + 1 / table_2x2[2, 1] + 1 / table_2x2[2, 2])
+  
+  # Compute the 95% confidence interval for the log odds ratio
+  log_or <- log(odds_ratio)
+  ci_log_or <- log_or + c(-1.96, 1.96) * se_log_or
+  
+  # Convert the confidence interval back to the original scale
+  ci_or <- exp(ci_log_or)
+  
+  # Return a list with the odds ratio and the 95% confidence interval
+  return(list(odds_ratio = odds_ratio, ci_lower = ci_or[1], ci_upper = ci_or[2]))
+}
+
+#use the function!
+compute_odds_ratio(table2)
+
+# Logistic Regression
+logistic_model2 <- glm(Outcome ~ Allele, data = data2, family = binomial)
+summary(logistic_model2)
+beta_coefficient <- coef(logistic_model2)["AlleleA"]
+exp(beta_coefficient)
+
+
+# Calculate probabilities for Outcome based on Allele, sparse data, a particularly pathological example
+set.seed(125)
+data3 <- data.frame(
+   Allele = sample(c("A", "a"), 500, replace = TRUE, prob = c(0.98,0.02))
+)
+
+data3$Outcome <- as.numeric(ifelse(data3$Allele == "a",
+                        sample(c("1", "0"), 500, replace = TRUE, prob = c(0.85, 0.15)),
+                        sample(c("1", "0"), 500, replace = TRUE, prob = c(0.15, 0.85))))
+
+#A two by two table of Allele A and a, with correlated outcome 0 and 1, sparse data
+table(data3)
+
+# Fisher's Exact Test
+table3 <- table(data3$Allele, data3$Outcome)
+fisher_test3 <- fisher.test(table3)
+print(fisher_test3)
+
+# Chi-Square Test
+chi_square_test3 <- chisq.test(table3)
+print(chi_square_test3)
+compute_odds_ratio(table3)
+
+# Logistic Regression
+logistic_model3 <- glm(Outcome ~ Allele, data = data3, family = binomial)
+summary(logistic_model3)
+beta_coefficient <- coef(logistic_model3)["AlleleA"]
+exp(beta_coefficient)
+
+#Now, which of these methods is preferable if we want to include continuously distributed covariates?
+
+#Lets consider a pathological example where under the null, repeated sampling yields a p value distribution
+#that is not distributed uniform (0,1)
+
+# Set seed for reproducibility
+set.seed(123)
+
+# Initialize a vector to store p-values
+p_values <- numeric(500)
+
+# Simulate 500 random samplings and perform Fisher's exact test
+for (i in 1:500) {
+  # Generate a 2x2 table with sparse data
+  table_sparse <- matrix(c(sample(0:10, 1), sample(0:10, 1), sample(0:10, 1), sample(0:10, 1)),
+                      nrow = 2, byrow = TRUE,
+                      dimnames = list(Exposure = c("A", "a"),
+                                      Outcome = c("1", "0")))
+  
+  # Perform Fisher's exact test
+  result <- fisher.test(table_sparse)
+  
+  # Collect the p-value
+  p_values[i] <- result$p.value
+}
+
+# Plot the distribution of p-values using a uniform QQ plot
+qqplot(-log10(runif(500)), -log10(p_values), main="Uniform QQ Plot of P-values", xlab="Theoretical Quantiles", ylab="Sample Quantiles")
+abline(0, 1, col = "red")
+
+
+```
