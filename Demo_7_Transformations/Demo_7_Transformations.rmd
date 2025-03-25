@@ -24,19 +24,21 @@ source("https://raw.githubusercontent.com/CrisVanHout-LIIGH/Class/main/Demo_7_Tr
 set.seed(42)
 n <- 1000
 genotype <- sample(c("0", "1", "2"), size = n, replace = TRUE, prob = c(0.25, 0.5, 0.25))
-dependent <- ifelse(genotype == "0", 1, ifelse(genotype == "1", 2, 3)) + 100*rexp(n, rate=10) + rnorm(n,10,1)
+age<-rpois(n, 50)
+dependent <- ifelse(genotype == "0", 1, ifelse(genotype == "1", 2, 3))
+dependent <- dependent + 100*rexp(n, rate=10) + rnorm(n,10,1) + age/10
 
 # Create a data frame
-data <- data.frame(genotype = as.numeric(genotype), dependent = dependent)
+data <- data.frame(genotype = as.numeric(genotype), dependent = dependent, age=age)
 
 # Inspect residuals for normality
-model_original <- lm(dependent ~ genotype, data = data)
+model_original <- lm(dependent ~ genotype + age, data = data)
 residuals_original <- residuals(model_original)
 
 
 # Apply a transformation (natural log transformation)
 data$dependent_transformed <- log(data$dependent)
-model_transformed <- lm(dependent_transformed ~ genotype, data = data)
+model_transformed <- lm(dependent_transformed ~ genotype + age, data = data)
 residuals_transformed <- residuals(model_transformed)
 
 # Set common axis limits based on the range of all residuals
@@ -86,6 +88,7 @@ qqline(normal_data, col = "lightblue")
 # helpful when extreme values are a concern.
 
 # Let's look at the residuals of the original and transformed models:
+# Here, the diagonal is in black, and the qqline is in light blue.
 
 par(mfrow = c(1, 3))
 hist(dependent, main = "Original Dependent Variable", xlab = "Value")
@@ -108,18 +111,18 @@ qqnorm(residuals_transformed, main = "Q-Q Plot (Transformed) common limits", xli
 abline(0,1)
 qqline(residuals_transformed,col="lightblue")
 
-# Fitted vs. Residuals: Original Model with Jittered Fitted Values
-plot(jitter(fitted(model_original)), residuals(model_original),
-     main = "Untransformed Model (Jittered Fitted)",
-     xlab = "Fitted Values (Jittered)",
+# Fitted vs. Residuals: Original Model with Fitted Values
+plot((fitted(model_original)), residuals(model_original),
+     main = "Untransformed Model (Fitted)",
+     xlab = "Fitted Values",
      ylab = "Residuals",
      pch = 20, col = "blue")
 abline(h = 0, col = "red", lwd = 2)
 
-# Fitted vs. Residuals: Log-Transformed Model with Jittered Fitted Values
-plot(jitter(fitted(model_transformed)), residuals(model_transformed),
-     main = "Log-Transformed Model (Jittered Fitted)",
-     xlab = "Fitted Values (Jittered)",
+# 2. Fitted vs. Residuals: Log-Transformed Model with Fitted Values
+plot((fitted(model_transformed)), residuals(model_transformed),
+     main = "Log-Transformed Model ( Fitted)",
+     xlab = "Fitted Values ()",
      ylab = "Residuals",
      pch = 20, col = "green")
 abline(h = 0, col = "red", lwd = 2)
@@ -187,7 +190,7 @@ par(mfrow = c(1,1))
 plot(data$dependent_rint, data$dependent_transformed, main = "Transformed vs. RINT Dependent Variable", xlab = "Transformed", ylab = "RINT")
 
 # Fit the model with RINT-transformed dependent variable
-model_rint <- lm(dependent_rint ~ genotype, data = data)
+model_rint <- lm(dependent_rint ~ genotype + age, data = data)
 residuals_rint <- residuals(model_rint)
 
 par(mfrow = c(1,3))
@@ -223,26 +226,26 @@ model_rint$coefficients[[2]]
 # Compare the residuals of the original, log-transformed, and RINT models
 par(mfrow = c(1, 3))
 
-# 1. Fitted vs. Residuals: Original Model with Jittered Fitted Values
-plot(jitter(fitted(model_original)), residuals(model_original),
-     main = "Untransformed Model (Jittered Fitted)",
-     xlab = "Fitted Values (Jittered)",
+# 1. Fitted vs. Residuals: Original Model with Fitted Values
+plot((fitted(model_original)), residuals(model_original),
+     main = "Untransformed Model (Fitted)",
+     xlab = "Fitted Values",
      ylab = "Residuals",
      pch = 20, col = "blue")
 abline(h = 0, col = "red", lwd = 2)
 
-# 2. Fitted vs. Residuals: Log-Transformed Model with Jittered Fitted Values
-plot(jitter(fitted(model_transformed)), residuals(model_transformed),
-     main = "Log-Transformed Model (Jittered Fitted)",
-     xlab = "Fitted Values (Jittered)",
+# 2. Fitted vs. Residuals: Log-Transformed Model with Fitted Values
+plot((fitted(model_transformed)), residuals(model_transformed),
+     main = "Log-Transformed Model ( Fitted)",
+     xlab = "Fitted Values ()",
      ylab = "Residuals",
      pch = 20, col = "green")
 abline(h = 0, col = "red", lwd = 2)
 
-# 3. Fitted vs. Residuals: RINT Model with Jittered Fitted Values
-plot(jitter(fitted(model_rint)), residuals(model_rint),
-     main = "RINT Model (Jittered Fitted)",
-     xlab = "Fitted Values (Jittered)",
+# 3. Fitted vs. Residuals: RINT Model with Fitted Values
+plot((fitted(model_rint)), residuals(model_rint),
+     main = "RINT Model (Fitted)",
+     xlab = "Fitted Values",
      ylab = "Residuals",
      pch = 20, col = "purple")
 abline(h = 0, col = "red", lwd = 2)
