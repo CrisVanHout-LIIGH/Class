@@ -1,0 +1,286 @@
+---
+title: "Demo_7_Transformations_2025"
+author: "Cris Van Hout"
+date: '`r Sys.Date()`'
+output: pdf_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+library(tinytex)
+
+# The following two functions are copies form GenABEL package by Y. Aulchenko,
+# which are very useful for transformations, but not available from CRAN or 
+# Bioconductor for modern R. We include them as part of the script.
+# The ztransform function standardizes the residuals of a linear model,
+# while the rntransform function performs a rank-based inverse normal transformation
+# on the dependent variable.
+
+"ztransform" <- function(formula,data,family=gaussian) {
+    if (missing(data)) {
+    if(is(formula,"formula")) 
+    data <- environment(formula)
+  else  
+    data <- environment()
+    # wasdata <- 0
+  } else {
+    if (is(data,"gwaa.data")) {
+    data <- data@phdata
+  } 
+    else if (!is(data,"data.frame")) {
+    stop("data argument should be of gwaa.data or data.frame class")
+  }
+    # attach(data,pos=2,warn.conflicts=FALSE)
+    # wasdata <- 1
+  }
+  if (is.character(family)) 
+           family <- get(family, mode = "function", envir = parent.frame())
+  if (is.function(family)) 
+           family <- family()
+  if (is.null(family$family)) {
+           print(family)
+           stop("'family' not recognized")
+  }
+    if ( is(try(formula,silent=TRUE),"try-error") ) { 
+    formula <- data[[as(match.call()[["formula"]],"character")]] 
+  }
+    if (is(formula,"formula")) {
+    # mf <- model.frame(formula,data,na.action=na.omit,drop.unused.levels=TRUE)
+    mf <- model.frame(formula,data,na.action=na.pass,drop.unused.levels=TRUE)
+    mids <- complete.cases(mf)
+    mf <- mf[mids,]
+    y <- model.response(mf)
+    desmat <- model.matrix(formula,mf)
+    lmf <- glm.fit(desmat,y,family=family)
+    # if (wasdata) 
+    # mids <- rownames(data) %in% rownames(mf)
+    # else 
+    resid <- lmf$resid
+    # print(formula)
+  } else if (is(formula,"numeric") || is(formula,"integer") || is(formula,"double")) {
+    y <- formula
+    mids <- (!is.na(y))
+    y <- y[mids]
+    resid <- y
+    if (length(unique(resid))==1) stop("trait is monomorphic")
+    if (length(unique(resid))==2) stop("trait is binary")
+  } else {
+    stop("formula argument must be a formula or one of (numeric, integer, double)")
+  }
+    y <- (resid-mean(resid))/sd(resid)
+    # if (wasdata==1) detach(data)
+    tmeas <- as.logical(mids)
+    out <- rep(NA,length(mids))
+    out[tmeas] <- y
+    out
+}
+
+"rntransform" <-function(formula,data,family=gaussian) {
+    if ( is(try(formula,silent=TRUE),"try-error") ) { 
+      if ( is(data,"gwaa.data") ) data1 <- phdata(data)
+    else if ( is(data,"data.frame") ) data1 <- data
+    else stop("'data' must have 'gwaa.data' or 'data.frame' class")
+    formula <- data1[[as(match.call()[["formula"]],"character")]] 
+  }
+    var <- ztransform(formula,data,family)
+    out <- rank(var) - 0.5
+    out[is.na(var)] <- NA
+    mP <- .5/max(out,na.rm=T)
+    out <- out/(max(out,na.rm=T)+.5)
+    out <- qnorm(out)
+   out
+}
+RINT<-rntransform #alias for those in a hurry
+
+# Simulate example data
+set.seed(42)
+n <- 1000
+genotype <- sample(c("0", "1", "2"), size = n, replace = TRUE, prob = c(0.25, 0.5, 0.25))
+dependent <- ifelse(genotype == "0", 1, ifelse(genotype == "1", 2, 3)) + 100*rexp(n, rate=10) + rnorm(n,10,1)
+
+# Create a data frame
+data <- data.frame(genotype = as.numeric(genotype), dependent = dependent)
+
+# Inspect residuals for normality
+model_original <- lm(dependent ~ genotype, data = data)
+residuals_original <- residuals(model_original)
+
+
+# Apply a transformation (natural log transformation)
+data$dependent_transformed <- log(data$dependent)
+model_transformed <- lm(dependent_transformed ~ genotype, data = data)
+residuals_transformed <- residuals(model_transformed)
+
+# Set common axis limits based on the range of all residuals
+common_limits <- range(c(residuals_original, residuals_transformed))
+
+# Reminder of interpretation of qq plot: If the data is normally distributed,
+# the points in the Q-Q plot should fall approximately along a straight line.
+# If the data is not normally distributed, the points will deviate from the straight line.
+
+#example
+par(mfrow = c(1, 1))
+normal_data <- rnorm(1000)
+qqnorm(normal_data,main="Q-Q Plot (Normal Data)")
+abline(0,1)
+qqline(normal_data, col = "lightblue")
+
+par(mfrow = c(1, 3))
+hist(dependent, main = "Original Dependent Variable", xlab = "Value")
+hist(residuals_original, main = "Original Residuals", xlab = "Residuals")
+qqnorm(residuals_original, main = "Q-Q Plot (Original)", xlim = common_limits, ylim = common_limits)
+abline(0,1)
+qqline(residuals_original,col="lightblue")
+
+par(mfrow = c(1,3))
+hist(data$dependent_transformed, main = "Transformed Dependent Variable", xlab = "Value")
+hist(residuals_transformed, main = "Transformed Residuals", xlab = "Residuals")
+qqnorm(residuals_transformed, main = "Q-Q Plot (Transformed)")
+abline(0,1)
+qqline(residuals_transformed,col="lightblue")
+
+par(mfrow = c(1,3))
+hist(data$dependent_transformed, main = "Transformed Dependent Variable", xlab = "Value")
+hist(residuals_transformed, main = "Transformed Residuals", xlab = "Residuals")
+qqnorm(residuals_transformed, main = "Q-Q Plot (Transformed) common limits", xlim = common_limits, ylim = common_limits)
+abline(0,1)
+qqline(residuals_transformed,col="lightblue")
+
+# Compare the summaries
+summary(model_original)
+summary(model_transformed)
+
+# Shapiro-Wilk Test The W statistic ranges between 0 and 1.
+# A value close to 1 indicates that the data is nearly normal,
+# while smaller values suggest deviations from normality
+
+shapiro.test(residuals_original)   # Before transformation
+shapiro.test(residuals_transformed)  # After transformation
+
+# Interpret the beta coefficients
+# The beta coefficient for genotype=1 is the expected difference in
+# the dependent variable between genotype=1 and genotype=0, holding
+# all other variables constant.
+# When the dependent variable is log-transformed (log(y)), the beta
+# coefficient represents the expected change in the logarithm of the
+# dependent variable (log(y)) per unit change in the predictor variable
+# (e.g., genotype levels 0,1,2).
+# To interpret the beta coefficient in terms of the original (unlogged)
+# dependent variable, you can exponentiate it using exp(beta).
+
+# The resulting value gives the multiplicative effect of the predictor
+# on the dependent variable. For example:
+# If exp(beta) > 1, the predictor increases the dependent variable
+# by a factor of exp(beta).
+# If exp(beta) < 1, the predictor decreases the dependent variable
+# by a factor of exp(beta).
+# If exp(beta) = 1, the predictor has no effect on the dependent variable.
+# After transformation, the beta coefficient reflects relative changes
+# instead of absolute changes in the dependent variable.
+
+# Suppose the beta coefficient for a genotype in the transformed model is
+# 0.05023:
+
+# Log Scale: For each unit change in the predictor (genotype), the log of
+# the dependent variable increases by 0.05023.
+# Exponentiated Scale: 
+
+exp(model_transformed$coefficients[[2]])
+
+# Indicating that the dependent variable increases by approximately 5.1%
+# per unit change in the predictor.
+# By transforming back to the original scale, you make the interpretation
+# more intuitive and relevant to the practical context.
+
+# Evaluate another type of transformation, the rank-based inverse normal
+# transformation (RINT) The RINT is a non-parametric transformation that
+# converts the dependent variable into a standard normal distribution.
+# The RINT maps the ranked values of the dependent variable onto a standard
+# normal distribution, effectively normalizing the variable while preserving
+# its rank order. This transformation is useful when the residuals of the
+# model are not normally distributed, even after applying other transformations.
+
+data$dependent_rint <- rntransform(data$dependent)
+
+par(mfrow = c(1,2))
+hist(data$dependent, main = "Original Dependent Variable", xlab = "Value")
+hist(data$dependent_rint, main = "RINT Dependent Variable", xlab = "Value")
+par(mfrow = c(1,1))
+plot(data$dependent_rint, data$dependent_transformed, main = "Transformed vs. RINT Dependent Variable", xlab = "Transformed", ylab = "RINT")
+
+# Fit the model with RINT-transformed dependent variable
+model_rint <- lm(dependent_rint ~ genotype, data = data)
+residuals_rint <- residuals(model_rint)
+
+par(mfrow = c(1,3))
+hist(data$dependent_rint, main = "RINT Dependent Variable", xlab = "Value")
+hist(residuals_rint, main = "RINT Residuals", xlab = "Residuals")
+qqnorm(residuals_rint, main = "Q-Q Plot (RINT) common limits", xlim = common_limits, ylim = common_limits)
+abline(0,1)
+qqline(residuals_rint,col="lightblue")
+
+shapiro.test(residuals_transformed)  # After RINT
+#What is the p-value of the Shapiro-Wilk test for the RINTed dependent variable?
+#shapiro.test(data$dependent_rint)
+
+# Compare the summaries
+summary(model_rint)
+
+# Since RINT normalizes the dependent variable, the beta coefficient reflects
+# the standardized effect size. It tells you how much the dependent variable
+# (on the normalized scale) changes per unit change in the predictor.
+# The values of the beta coefficients cannot be directly translated back to
+# the original scale of the dependent variable. They are relative measures
+# indicating the direction and magnitude of association within the transformed
+# (ranked) scale. RINT reduces the influence of outliers and emphasizes rank
+# order rather than raw values. Therefore, the beta coefficient is less sensitive
+# to extreme values and primarily describes the overall trend or relationship.
+
+model_rint$coefficients[[2]]
+
+#This means that for this genotype, the dependent variable's rank-transformed
+# value is expected to increase by 0.17 standard deviations for each unit
+# of the predictor variable.
+
+# In Summary
+#If the residuals in a linear model do not meet the assumption of normality,
+# it can lead to various consequences.
+
+# Inference Issues:
+# P-values and Confidence Intervals: Non-normal residuals can make the
+# standard errors unreliable, leading to inaccurate p-values and confidence
+# intervals for the regression coefficients.
+
+# Type I/II Errors: Increased risk of falsely rejecting the null hypothesis
+# (Type I error) or failing to detect a true effect (Type II error).
+
+# Violation of Assumptions:
+# While the normality of residuals is not required for unbiased coefficient
+# estimation, it is critical for valid hypothesis testing and for relying on
+# outputs such as t-tests and F-tests.
+
+# Loss of Predictive Power:
+# Non-normal residuals may indicate issues like heteroscedasticity or
+# non-linearity, which can reduce the model’s predictive accuracy.
+
+# Underestimation of Extreme Values:
+# Non-normal residuals, especially when skewed, can result in poor
+# predictions for extreme observations (outliers) in the dependent variable.
+
+# Inefficient Parameter Estimation:
+# Although linear regression is robust to slight deviations from normality,
+# severe non-normality can lead to inefficient parameter estimates,
+# particularly if the sample size is small.
+
+# To address these issues, you can apply transformations to the dependent
+# variable to improve the normality of residuals! The choice of transformation
+# depends on the distribution of the dependent variable and the nature of the
+# relationship with the predictor variables.
+
+# Using the fitted vs. residuals plot, Q-Q plot, and Shapiro-Wilk test, you
+# can assess the normality of residuals and determine whether a transformation
+# is necessary.
+
+```
