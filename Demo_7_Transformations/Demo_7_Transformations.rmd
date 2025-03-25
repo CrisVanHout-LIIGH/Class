@@ -111,7 +111,7 @@ qqnorm(residuals_transformed, main = "Q-Q Plot (Transformed) common limits", xli
 abline(0,1)
 qqline(residuals_transformed,col="lightblue")
 
-# Fitted vs. Residuals: Original Model with Fitted Values
+# Fitted vs. Residuals: Original Model
 plot((fitted(model_original)), residuals(model_original),
      main = "Untransformed Model (Fitted)",
      xlab = "Fitted Values",
@@ -119,7 +119,7 @@ plot((fitted(model_original)), residuals(model_original),
      pch = 20, col = "blue")
 abline(h = 0, col = "red", lwd = 2)
 
-# 2. Fitted vs. Residuals: Log-Transformed Model with Fitted Values
+# 2. Fitted vs. Residuals: Log-Transformed Model
 plot((fitted(model_transformed)), residuals(model_transformed),
      main = "Log-Transformed Model ( Fitted)",
      xlab = "Fitted Values ()",
@@ -226,7 +226,7 @@ model_rint$coefficients[[2]]
 # Compare the residuals of the original, log-transformed, and RINT models
 par(mfrow = c(1, 3))
 
-# 1. Fitted vs. Residuals: Original Model with Fitted Values
+# 1. Fitted vs. Residuals: Original Model
 plot((fitted(model_original)), residuals(model_original),
      main = "Untransformed Model (Fitted)",
      xlab = "Fitted Values",
@@ -234,7 +234,7 @@ plot((fitted(model_original)), residuals(model_original),
      pch = 20, col = "blue")
 abline(h = 0, col = "red", lwd = 2)
 
-# 2. Fitted vs. Residuals: Log-Transformed Model with Fitted Values
+# 2. Fitted vs. Residuals: Log-Transformed Model
 plot((fitted(model_transformed)), residuals(model_transformed),
      main = "Log-Transformed Model ( Fitted)",
      xlab = "Fitted Values ()",
@@ -242,7 +242,7 @@ plot((fitted(model_transformed)), residuals(model_transformed),
      pch = 20, col = "green")
 abline(h = 0, col = "red", lwd = 2)
 
-# 3. Fitted vs. Residuals: RINT Model with Fitted Values
+# 3. Fitted vs. Residuals: RINT Model
 plot((fitted(model_rint)), residuals(model_rint),
      main = "RINT Model (Fitted)",
      xlab = "Fitted Values",
@@ -251,7 +251,7 @@ plot((fitted(model_rint)), residuals(model_rint),
 abline(h = 0, col = "red", lwd = 2)
 
 # In Summary
-#If the residuals in a linear model do not meet the assumption of normality,
+# If the residuals in a linear model do not meet the assumption of normality,
 # it can lead to various consequences.
 
 # Inference Issues:
