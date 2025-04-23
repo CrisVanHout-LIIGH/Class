@@ -1,7 +1,11 @@
 
-###Useful functions for association studies, borrowed from all over time and space
-#note that you can simply copy and paste this entire code block into R to load all of the functions or source("LabFunctions.R") where the LabFunctions.R file is in the R working directory, or source("~/Desktop/LabFunctions.R") if it is on the desktop
+#Useful functions for association studies, borrowed from all over time and space
+# note that you can simply copy and paste this entire code block into R to load all
+# of the functions or source("LabFunctions.R") where the LabFunctions.R file is in the
+# R working directory, or # source("~/Desktop/LabFunctions.R") if it is on the desktop
+# or source("https://raw.githubusercontent.com/CrisVanHout-LIIGH/Class/refs/heads/main/LabFunctions.R")
 
+ 
 ##########################################################################
 ##### Manhattan plot from qqman package https://www.r-bloggers.com/2014/05/qqman-an-r-package-for-creating-q-q-and-manhattan-plots-from-gwas-results/
 
@@ -362,3 +366,102 @@ lines( -log10(alpha/(M+1)), -log10(x_bot))
 
 return( invisible(lambda_values) )
 }
+
+
+### Plotting with style
+### Load geom_flat_violin function manually from the classroom github repo
+#geom_flat_violin.R
+# To do: Source the function from the GitHub URL
+#https://gist.github.com/dgrtwo/eb7750e74997891d7c20#file-geom_flat_violin-r
+
+library(ggplot2)
+library(dplyr)
+library(rlang)  # Needed for tidy evaluation
+
+"%||%" <- function(a, b) {
+  if (!is.null(a)) a else b
+}
+
+geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
+                        position = "dodge", trim = TRUE, scale = "area",
+                        show.legend = NA, inherit.aes = TRUE, ...) {
+  layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomFlatViolin,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(
+      trim = trim,
+      scale = scale,
+      ...
+    )
+  )
+}
+
+###' @rdname ggplot2-ggproto
+###' @format NULL
+###' @usage NULL
+###' @export
+GeomFlatViolin <-
+  ggproto("GeomFlatViolin", Geom,
+          setup_data = function(data, params) {
+            data$width <- data$width %||%
+              params$width %||% (resolution(data$x, FALSE) * 0.9)
+            
+            # ymin, ymax, xmin, and xmax define the bounding rectangle for each group
+            data %>%
+              group_by(group) %>%
+              mutate(ymin = min(y),
+                     ymax = max(y),
+                     xmin = x,
+                     xmax = x + width / 2)
+          },
+          
+          draw_group = function(data, panel_scales, coord) {
+            # Find the points for the line to go all the way around
+            data <- transform(data, xminv = x,
+                              xmaxv = x + violinwidth * (xmax - x))
+            
+            # Make sure it's sorted properly to draw the outline
+            newdata <- rbind(plyr::arrange(transform(data, x = xminv), y),
+                             plyr::arrange(transform(data, x = xmaxv), -y))
+            
+            # Close the polygon: set first and last point the same
+            # Needed for coord_polar and such
+            newdata <- rbind(newdata, newdata[1,])
+            
+            ggplot2:::ggname("geom_flat_violin", GeomPolygon$draw_panel(newdata, panel_scales, coord))
+          },
+          
+          draw_key = draw_key_polygon,
+          
+          default_aes = aes(weight = 1, colour = "grey20", fill = "white", linewidth = 0.5,
+                            alpha = NA, linetype = "solid"),
+          
+          required_aes = c("x", "y")
+)
+
+geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
+                             position = "dodge", trim = TRUE, scale = "area", 
+                             show.legend = NA, inherit.aes = TRUE, ...) {
+  ggplot2::layer(
+    data = data,
+    mapping = mapping,
+    stat = stat,
+    geom = GeomFlatViolin,
+    position = position,
+    show.legend = show.legend,
+    inherit.aes = inherit.aes,
+    params = list(trim = trim, scale = scale, ...)
+  )
+}
+
+mixedPlot <- ggplot(Df, aes(X, Y, fill = X)) +
+  geom_flat_violin(alpha = 0.5, position = position_nudge(x = .2, y = 0)) +
+  geom_jitter(alpha = 0.5, width = 0.15) +
+  geom_boxplot(alpha = 0.5, width = .25, outlier.shape = NA) +
+  theme_minimal() +
+  theme(legend.position = "none")
