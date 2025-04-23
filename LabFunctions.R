@@ -459,9 +459,11 @@ geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
   )
 }
 
-mixedPlot <- ggplot(Df, aes(X, Y, fill = X)) +
-  geom_flat_violin(alpha = 0.5, position = position_nudge(x = .2, y = 0)) +
-  geom_jitter(alpha = 0.5, width = 0.15) +
-  geom_boxplot(alpha = 0.5, width = .25, outlier.shape = NA) +
-  theme_minimal() +
-  theme(legend.position = "none")
+#example
+#mixedPlot <- ggplot(Df, aes(X, Y, fill = X)) +
+#  geom_flat_violin(alpha = 0.5, position = position_nudge(x = .2, y = 0)) +
+#  geom_jitter(alpha = 0.5, width = 0.15) +
+#  geom_boxplot(alpha = 0.5, width = .25, outlier.shape = NA) +
+#  theme_minimal() +
+#  theme(legend.position = "none")
+#mixedPlot
