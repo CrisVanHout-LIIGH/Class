@@ -156,8 +156,8 @@ RINT<-rntransform #alias for those in a hurry
 #' @param main title
 #' @param pch pch
 #' @param errors show 95\% confidence interval
-#' @param lambda calculate and show genomic control lambda.  Lambda_GC is calcualted using the 'median' method on p-values > p_thresh.
-#' @param p_thresh Lambda_GC is calcualted using the 'median' method on p-values > p_thresh.
+#' @param lambda calculate and show genomic control lambda.  Lambda_GC is calculated using the 'median' method on p-values > p_thresh.
+#' @param p_thresh Lambda_GC is calculated using the 'median' method on p-values > p_thresh.
 #' @param showNames show column names or list keys in the legend
 #' @param ylim ylim 
 #' @param xlim xlim
