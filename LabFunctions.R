@@ -469,9 +469,7 @@ geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
 #mixedPlot
 
 
-#power functions
 # Functions for genotype coding, variance, NCP, projected beta, and power
-
 var_additive <- function(q) 2 * q * (1 - q)
 var_dominant <- function(q) { p_dom <- 1 - (1 - q)^2; p_dom * (1 - p_dom) }
 var_recessive <- function(q) { p_rec <- q^2; p_rec * (1 - p_rec) }
@@ -501,10 +499,11 @@ projected_beta <- function(beta_true, q, truth_fn, test_fn) {
   beta_true * cov_tt / var_t
 }
 
-power_cf <- function(beta_true, n, q, residSD = 4,
+power_cf <- function(beta_true, n, q, residSD,
                      alpha = 0.05,
                      truth_model = "additive",
                      test_model  = "additive") {
+
   truth_fn <- switch(truth_model,
     additive  = add_code,
     dominant  = dom_code,
@@ -523,3 +522,4 @@ power_cf <- function(beta_true, n, q, residSD = 4,
 
   pt(-t_crit, df, ncp = lambda) + pt(t_crit, df, ncp = lambda, lower.tail = FALSE)
 }
+
