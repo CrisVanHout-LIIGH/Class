@@ -467,3 +467,59 @@ geom_flat_violin <- function(mapping = NULL, data = NULL, stat = "ydensity",
 #  theme_minimal() +
 #  theme(legend.position = "none")
 #mixedPlot
+
+
+#power functions
+# Functions for genotype coding, variance, NCP, projected beta, and power
+
+var_additive <- function(q) 2 * q * (1 - q)
+var_dominant <- function(q) { p_dom <- 1 - (1 - q)^2; p_dom * (1 - p_dom) }
+var_recessive <- function(q) { p_rec <- q^2; p_rec * (1 - p_rec) }
+
+ncp <- function(beta, n, var_x, residSD) {
+  beta * sqrt(n * var_x) / residSD
+}
+
+cov_codings <- function(q, coding_a, coding_b) {
+  probs <- c((1-q)^2, 2*q*(1-q), q^2)
+  g     <- 0:2
+  Xa <- sapply(g, coding_a)
+  Xb <- sapply(g, coding_b)
+  EXa  <- sum(probs * Xa)
+  EXb  <- sum(probs * Xb)
+  EXaXb <- sum(probs * Xa * Xb)
+  EXaXb - EXa * EXb
+}
+
+add_code <- function(g) g
+dom_code <- function(g) ifelse(g >= 1, 1, 0)
+rec_code <- function(g) ifelse(g == 2, 1, 0)
+
+projected_beta <- function(beta_true, q, truth_fn, test_fn) {
+  cov_tt <- cov_codings(q, test_fn, truth_fn)
+  var_t  <- cov_codings(q, test_fn, test_fn)
+  beta_true * cov_tt / var_t
+}
+
+power_cf <- function(beta_true, n, q, residSD = 4,
+                     alpha = 0.05,
+                     truth_model = "additive",
+                     test_model  = "additive") {
+  truth_fn <- switch(truth_model,
+    additive  = add_code,
+    dominant  = dom_code,
+    recessive = rec_code)
+
+  test_fn <- switch(test_model,
+    additive  = add_code,
+    dominant  = dom_code,
+    recessive = rec_code)
+
+  beta_eff <- projected_beta(beta_true, q, truth_fn, test_fn)
+  var_x <- cov_codings(q, test_fn, test_fn)
+  lambda <- ncp(beta_eff, n, var_x, residSD)
+  df     <- n - 2
+  t_crit <- qt(1 - alpha / 2, df)
+
+  pt(-t_crit, df, ncp = lambda) + pt(t_crit, df, ncp = lambda, lower.tail = FALSE)
+}
