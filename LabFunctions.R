@@ -172,7 +172,7 @@ RINT<-rntransform #alias for those in a hurry
 #' lambda = QQ_plot(p, plot=FALSE)
 #'
 #' @export 
-QQ_plot = function(p_values, col=rainbow(min(length(p_values), ncol(p_values))), main="", pch=20, errors=TRUE, lambda=TRUE, p_thresh = 1e-7, showNames=FALSE, ylim=NULL, xlim=NULL, plot=TRUE,new=TRUE, box.lty=par("lty"), collapse=FALSE,...){
+QQ_plot = function(p_values, col=NULL, main="", pch=20, errors=TRUE, lambda=TRUE, p_thresh = 1e-7, showNames=FALSE, ylim=NULL, xlim=NULL, plot=TRUE,new=TRUE, box.lty=par("lty"), collapse=FALSE,...){
 
 if( collapse ){
 p_values = as.vector(unlist(p_values, use.names=FALSE))
@@ -202,7 +202,11 @@ names(p_values_list) = keys
 
 p_values = p_values_list
 rm( p_values_list )
-} 
+}
+
+if (is.null(col)) {
+col <- rainbow(length(p_values))
+}
 
 rge = range(p_values, na.rm=TRUE)
 
